@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IARELS - Voice Intelligence</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div class="container">
+    
+    <!-- Top Navigation with History Button on Top Right -->
+    <nav class="top-nav">
+      <div class="brand-tag">
+        <span class="status-dot"></span>
+        IARELS INTELLIGENCE
+      </div>
+      <button type="button" class="history-toggle-btn" onclick="openHistoryDrawer()">
+        <span>📜 History</span>
+        <span id="historyCountBadge" class="history-count-badge">0</span>
+      </button>
+    </nav>
+
+    <!-- Header -->
+    <header class="app-header">
+      <h1>IARELS</h1>
+      <p>Voice-Activated Executive Intelligence. Say <strong>"HEY"</strong>, <strong>"TELL"</strong>, or <strong>"ABOUT"</strong> to ask hands-free.</p>
+    </header>
+
+    <!-- Hands-Free Wake Word Banner & Search Bar -->
+    <section>
+      <form id="iarelsForm" onsubmit="handleQuerySubmit(event)">
+        <div class="search-voice-bar">
+          <!-- Mic Indicator (Lights up automatically when you say HEY, TELL, or ABOUT) -->
+          <button type="button" id="micBtn" class="mic-btn" title="Click or speak wake words: HEY, TELL, ABOUT" onclick="toggleManualVoice()">
+            🎙️
+          </button>
+
+          <!-- Input Field -->
+          <input type="text" id="queryInput" class="search-input" placeholder="Say 'Hey', 'Tell me about...', or 'About...' (or type here)..." autocomplete="off" />
+
+          <!-- Search Button -->
+          <button type="submit" id="searchSubmitBtn" class="search-submit-btn">
+            <span>Search</span>
+          </button>
+        </div>
+      </form>
+
+      <!-- Real-time Hands-Free Voice Status -->
+      <div class="voice-status-line">
+        <span id="voiceStatusText">🎙️ Hands-Free Listening: Say "HEY", "TELL", or "ABOUT"</span>
+        <span id="wakeWordIndicator" style="font-size: 0.75rem; color: #fbbf24; font-weight: 700;">● Auto-Wake Ready</span>
+      </div>
+
+      <!-- Quick Preset Chips -->
+      <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.85rem;">
+        <span style="font-size: 0.75rem; color: #8da4a7; font-weight: 700; text-transform: uppercase;">Or Try Saying:</span>
+        <span class="quick-chip" onclick="askQuickPrompt('Hey tell me about astronaut')">"Hey tell me about astronaut"</span>
+        <span class="quick-chip" onclick="askQuickPrompt('Tell me about quantum computing')">"Tell me about quantum computing"</span>
+        <span class="quick-chip" onclick="askQuickPrompt('About black holes')">"About black holes"</span>
+        <span class="quick-chip" onclick="askQuickPrompt('Tell about Neil Armstrong')">"Tell about Neil Armstrong"</span>
+      </div>
+    </section>
+
+    <!-- Loading State -->
+    <div id="loader" class="loader hidden">
+      <div class="spinner"></div>
+      <p style="margin-top: 1rem; color: #d8f3dc; font-weight: 800;">IARELS GATHERING REAL-TIME DATA...</p>
+      <p style="color: #8da4a7; font-size: 0.85rem; margin-top: 0.25rem;">Browsing web repositories, summarizing facts, and preparing one-time spoken answer</p>
+    </div>
+
+    <!-- ========================================================
+         MAIN RECTANGLE CONVERSATION BOX
+         Contains: Question, Spoken Reply, and Exactly 3 Sub-Boxes
+         ======================================================== -->
+    <main id="conversationRect" class="hidden">
+      <section class="conversation-rectangle">
+        
+        <!-- 1. Question Section -->
+        <div class="box-question-row">
+          <div class="avatar-user">👤</div>
+          <div class="question-content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span class="question-tag">You Asked</span>
+              <span id="displayTimestamp" style="font-size: 0.75rem; color: #8da4a7;"></span>
+            </div>
+            <p id="displayQuestion" class="question-text"></p>
+          </div>
+        </div>
+
+        <!-- 2. Spoken Answer Section -->
+        <div class="box-spoken-row">
+          <div class="avatar-iarels">✨</div>
+          <div class="spoken-content">
+            <div class="spoken-header">
+              <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
+                <span class="spoken-title">IARELS Spoken Reply</span>
+                <span id="displaySpeedBadge" class="speed-pill">🗣️ 140 WPM (Natural Cadence)</span>
+                <span id="displaySourceBadge" class="source-badge">🌐 Web & AI Knowledge</span>
+                <span id="displayLatencyBadge" class="latency-pill">⚡ 4.2ms</span>
+              </div>
+              <div style="display: flex; gap: 0.4rem;">
+                <button type="button" id="voiceReplayBtn" class="btn-replay" onclick="replayVoiceOnce()">
+                  🔊 Replay Voice
+                </button>
+                <button type="button" class="btn-replay" onclick="copyFullDossier()">
+                  📋 Copy All
+                </button>
+              </div>
+            </div>
+            <p id="displaySpokenReply" class="spoken-text"></p>
+          </div>
+        </div>
+
+        <!-- 3. EXACTLY THREE BOXES AT BOTTOM -->
+        <div class="three-boxes-grid">
+          
+          <!-- Box 1: TEXT (REAL IN-DEPTH KNOWLEDGE) -->
+          <div class="sub-box box-text">
+            <div class="box-title-bar">
+              <span>📝 BOX 1: TEXT — FACTUAL OVERVIEW</span>
+            </div>
+            <p id="displayTextContent" class="text-body"></p>
+          </div>
+
+          <!-- Box 2: SUMMARIZATION (With Key Words Highlighted) -->
+          <div class="sub-box box-summary">
+            <div class="box-title-bar">
+              <span>📌 BOX 2: SUMMARIZATION</span>
+            </div>
+            <p id="displaySummaryContent" class="summary-body"></p>
+
+            <!-- Extracted Key Words from Summarization -->
+            <div class="keywords-section">
+              <span class="keywords-label">🏷️ Key Words Represented:</span>
+              <div id="displayKeywordsWrap" class="keywords-wrap"></div>
+            </div>
+          </div>
+
+          <!-- Box 3: KEY TAKEAWAYS (REAL FACTS) -->
+          <div class="sub-box box-takeaways">
+            <div class="box-title-bar">
+              <span>💡 BOX 3: KEY TAKEAWAYS</span>
+            </div>
+            <ul id="displayTakeawaysList" class="takeaways-list"></ul>
+          </div>
+
+        </div>
+
+      </section>
+    </main>
+
+  </div>
+
+  <!-- Bottom Presentation Credit -->
+  <footer class="presentation-footer">
+    Presented by <strong>Abhi and Phanendra</strong>
+  </footer>
+
+  <!-- Top-Right History Drawer -->
+  <div id="historyOverlay" class="history-modal-overlay hidden" onclick="closeHistoryDrawer(event)">
+    <div class="history-drawer" onclick="event.stopPropagation()">
+      <div class="history-header">
+        <h3 class="history-title">📜 Conversation History</h3>
+        <button type="button" class="history-close-btn" onclick="closeHistoryDrawer()">&times;</button>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 0.75rem; color: #8da4a7;">Stored past sessions</span>
+        <button type="button" style="background: none; border: none; color: #f87171; font-size: 0.75rem; cursor: pointer; font-weight: 700;" onclick="clearAllHistory()">
+          Clear History
+        </button>
+      </div>
+
+      <div id="historyList" class="history-list"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden">Copied to clipboard!</div>
+
+  <!-- Client-Side Engine -->
+  <script>
+    let isHandsFreeActive = false;
+    let recognizer = null;
+    let activeSpokenText = '';
+    let isQueryInFlight = false;
+    let hasSpokenForThisQuery = false;
+    let wakeWordTriggered = false;
+    let speechStartTime = null;
+    let lastDetectedWpm = null;
+    const STORAGE_KEY = 'iarels_conversation_history';
+
+    // Wake words list
+    const WAKE_WORDS = ['hey', 'tell', 'about'];
+
+    // ========================================================
+    // Strictly ONE-TIME Voice Output (Zero Repeating)
+    // ========================================================
+    function speakAnswerVoiceOnce(text) {
+      if (!('speechSynthesis' in window)) return;
+      
+      // Cancel any existing utterance before starting
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+
+      utterance.onstart = () => {
+        document.getElementById('voiceReplayBtn').innerText = '⏹️ Pause Voice';
+      };
+      utterance.onend = () => {
+        document.getElementById('voiceReplayBtn').innerText = '🔊 Replay Voice';
+        // Resume hands-free listening after answer has finished speaking
+        resumeHandsFree();
+      };
+      utterance.onerror = () => {
+        document.getElementById('voiceReplayBtn').innerText = '🔊 Replay Voice';
+        resumeHandsFree();
+      };
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function replayVoiceOnce() {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        document.getElementById('voiceReplayBtn').innerText = '🔊 Replay Voice';
+        resumeHandsFree();
+      } else if (activeSpokenText) {
+        speakAnswerVoiceOnce(activeSpokenText);
+      }
+    }
+
+    // ========================================================
+    // Hands-Free Wake Word & Voice Recognition Engine
+    // (Activates on "HEY", "TELL", or "ABOUT" without touching mic)
+    // ========================================================
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    function initHandsFreeVoice() {
+      if (!SpeechRecognition) {
+        console.warn('Web Speech API not supported in this browser.');
+        return;
+      }
+
+      if (recognizer) {
+        try { recognizer.stop(); } catch (e) {}
+      }
+
+      recognizer = new SpeechRecognition();
+      recognizer.continuous = true;
+      recognizer.interimResults = true;
+      recognizer.lang = 'en-US';
+
+      recognizer.onstart = () => {
+        isHandsFreeActive = true;
+        updateStatusDisplay('🎙️ Hands-Free Active: Say "HEY", "TELL", or "ABOUT"', '#d8f3dc');
+      };
+
+      recognizer.onresult = (event) => {
+        if (isQueryInFlight) return; // Prevent double trigger
+
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          transcript += event.results[i][0].transcript;
+        }
+
+        const lowerTranscript = transcript.toLowerCase().trim();
+
+        // 1. Detect if any wake word is spoken
+        const matchedWakeWord = WAKE_WORDS.find(w => lowerTranscript.includes(w));
+
+        if (matchedWakeWord && !wakeWordTriggered) {
+          wakeWordTriggered = true;
+          speechStartTime = performance.now();
+          // Automatically turn ON mic visual without touching button!
+          document.getElementById('micBtn').classList.add('listening');
+          updateStatusDisplay(`✨ Detected "${matchedWakeWord.toUpperCase()}"! Listening to question...`, '#fbbf24');
+        }
+
+        // 2. If wake word was triggered (or manual questioning), capture full question
+        if (wakeWordTriggered) {
+          if (!speechStartTime) {
+            speechStartTime = performance.now();
+          }
+          document.getElementById('queryInput').value = transcript;
+
+          // Check if completion is reached
+          const isFinal = event.results[event.results.length - 1].isFinal;
+          if (isFinal) {
+            const finalQuery = transcript.trim();
+            if (finalQuery.length > 2) {
+              let computedWpm = null;
+              if (speechStartTime) {
+                const durationSec = Math.max(0.6, (performance.now() - speechStartTime) / 1000);
+                const wordCount = finalQuery.split(/\s+/).filter(Boolean).length;
+                computedWpm = Math.round((wordCount / durationSec) * 60);
+                if (computedWpm < 60) computedWpm = Math.max(computedWpm, 75);
+                if (computedWpm > 350) computedWpm = 220;
+              }
+              speechStartTime = null;
+              triggerAutoAnswer(finalQuery, computedWpm);
+            }
+          }
+        }
+      };
+
+      recognizer.onerror = (e) => {
+        console.warn('Speech recognition warning:', e.error);
+        if (e.error === 'not-allowed') {
+          updateStatusDisplay('Microphone permission required for hands-free detection', '#f87171');
+        }
+      };
+
+      recognizer.onend = () => {
+        // Automatically keep listening hands-free if not currently answering
+        if (!isQueryInFlight) {
+          setTimeout(() => {
+            if (!isQueryInFlight) {
+              try { recognizer.start(); } catch (err) {}
+            }
+          }, 300);
+        }
+      };
+
+      try {
+        recognizer.start();
+      } catch (err) {
+        console.warn('Auto start error:', err);
+      }
+    }
+
+    function triggerAutoAnswer(query, voiceSpeedWpm = null) {
+      if (isQueryInFlight) return;
+      isQueryInFlight = true;
+      wakeWordTriggered = false;
+      speechStartTime = null;
+
+      // Turn OFF mic visual
+      document.getElementById('micBtn').classList.remove('listening');
+      updateStatusDisplay('● Question complete! Browsing real-time answer...', '#38bdf8');
+
+      // Pause speech recognizer while answering
+      if (recognizer) {
+        try { recognizer.stop(); } catch (e) {}
+      }
+
+      executeAssistantQuery(query, voiceSpeedWpm);
+    }
+
+    function resumeHandsFree() {
+      isQueryInFlight = false;
+      wakeWordTriggered = false;
+      speechStartTime = null;
+      document.getElementById('micBtn').classList.remove('listening');
+      updateStatusDisplay('🎙️ Hands-Free Listening: Say "HEY", "TELL", or "ABOUT"', '#d8f3dc');
+
+      // Restart hands-free listening
+      setTimeout(() => {
+        if (!isQueryInFlight && recognizer) {
+          try { recognizer.start(); } catch (e) {}
+        }
+      }, 400);
+    }
+
+    function toggleManualVoice() {
+      // Manual click can also trigger question listening
+      if (!wakeWordTriggered) {
+        wakeWordTriggered = true;
+        speechStartTime = performance.now();
+        document.getElementById('micBtn').classList.add('listening');
+        document.getElementById('queryInput').value = '';
+        updateStatusDisplay('● Mic Active: Listening to question...', '#f87171');
+        showToast('Mic on. Speak your question.');
+      } else {
+        wakeWordTriggered = false;
+        speechStartTime = null;
+        document.getElementById('micBtn').classList.remove('listening');
+        updateStatusDisplay('🎙️ Hands-Free Listening: Say "HEY", "TELL", or "ABOUT"', '#d8f3dc');
+      }
+    }
+
+    function updateStatusDisplay(text, color) {
+      const el = document.getElementById('voiceStatusText');
+      el.innerText = text;
+      if (color) el.style.color = color;
+    }
+
+    // ========================================================
+    // Query Execution & Single Rectangle Presentation
+    // ========================================================
+    function handleQuerySubmit(e) {
+      e.preventDefault();
+      const q = document.getElementById('queryInput').value.trim();
+      if (!q) {
+        showToast('Please speak or type a question.');
+        return;
+      }
+      triggerAutoAnswer(q, null);
+    }
+
+    function askQuickPrompt(q) {
+      document.getElementById('queryInput').value = q;
+      triggerAutoAnswer(q, null);
+    }
+
+    async function executeAssistantQuery(query, voiceSpeedWpm = null) {
+      const loader = document.getElementById('loader');
+      const convRect = document.getElementById('conversationRect');
+      const searchBtn = document.getElementById('searchSubmitBtn');
+
+      loader.classList.remove('hidden');
+      convRect.classList.add('hidden');
+      searchBtn.disabled = true;
+
+      const formData = new FormData();
+      formData.append('query', query);
+      if (voiceSpeedWpm) {
+        formData.append('voice_speed_wpm', voiceSpeedWpm);
+      }
+
+      try {
+        const res = await fetch('/api/ask', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!res.ok) throw new Error('Query execution failed');
+
+        const data = await res.json();
+        renderAndSaveSession(data);
+      } catch (err) {
+        alert('Error: ' + err.message);
+        resumeHandsFree();
+      } finally {
+        loader.classList.add('hidden');
+        searchBtn.disabled = false;
+      }
+    }
+
+    function renderAndSaveSession(data, saveToHistory = true) {
+      activeSpokenText = data.spoken_reply;
+
+      // 1. Question Section
+      document.getElementById('displayQuestion').innerText = data.question;
+      document.getElementById('displayTimestamp').innerText = data.timestamp || 'Just now';
+
+      // 2. Spoken Reply
+      document.getElementById('displaySpokenReply').innerText = data.spoken_reply;
+      const speedBadge = document.getElementById('displaySpeedBadge');
+      if (speedBadge) {
+        speedBadge.innerText = data.voice_speed ? `🗣️ ${data.voice_speed}` : '🗣️ 140 WPM (Natural Cadence)';
+      }
+      document.getElementById('displaySourceBadge').innerText = data.source_label ? `🌐 ${data.source_label}` : '🌐 Web & AI Knowledge';
+      document.getElementById('displayLatencyBadge').innerText = data.latency_ms ? `⚡ ${data.latency_ms}ms` : '⚡ Sub-second';
+
+      // 3. Box 1: TEXT
+      document.getElementById('displayTextContent').innerText = data.text_content;
+
+      // 4. Box 2: SUMMARIZATION
+      document.getElementById('displaySummaryContent').innerText = data.summarized_content;
+
+      // Key Words Highlighted from Summarization
+      const kwWrap = document.getElementById('displayKeywordsWrap');
+      kwWrap.innerHTML = '';
+      (data.keywords || []).forEach(kw => {
+        const badge = document.createElement('span');
+        badge.className = 'keyword-badge';
+        badge.innerText = kw;
+        kwWrap.appendChild(badge);
+      });
+
+      // 5. Box 3: KEY TAKEAWAYS
+      const list = document.getElementById('displayTakeawaysList');
+      list.innerHTML = '';
+      (data.key_takeaways || []).forEach(item => {
+        const li = document.createElement('li');
+        li.innerText = item;
+        list.appendChild(li);
+      });
+
+      // Show the single rectangle box containing all data
+      const convRect = document.getElementById('conversationRect');
+      convRect.classList.remove('hidden');
+      convRect.scrollIntoView({ behavior: 'smooth' });
+
+      // Speak real factual answer strictly ONCE!
+      speakAnswerVoiceOnce(data.spoken_reply);
+
+      if (saveToHistory) {
+        addHistoryRecord(data);
+      }
+    }
+
+    // ========================================================
+    // History Drawer Logic
+    // ========================================================
+    function getHistoryRecords() {
+      try {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function addHistoryRecord(record) {
+      let history = getHistoryRecords();
+      history = history.filter(h => h.question.toLowerCase() !== record.question.toLowerCase());
+      history.unshift(record);
+      if (history.length > 25) history = history.slice(0, 25);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      updateHistoryBadge();
+    }
+
+    function updateHistoryBadge() {
+      const history = getHistoryRecords();
+      document.getElementById('historyCountBadge').innerText = history.length;
+    }
+
+    function openHistoryDrawer() {
+      const history = getHistoryRecords();
+      const list = document.getElementById('historyList');
+      list.innerHTML = '';
+
+      if (history.length === 0) {
+        list.innerHTML = '<p style="color: #8da4a7; font-size: 0.85rem; text-align: center; margin-top: 2rem;">No past history yet. Ask a question to begin!</p>';
+      } else {
+        history.forEach((item) => {
+          const card = document.createElement('div');
+          card.className = 'history-item-card';
+          card.onclick = () => {
+            renderAndSaveSession(item, false);
+            closeHistoryDrawer();
+            showToast('Restored inquiry from history.');
+          };
+          card.innerHTML = `
+            <div class="history-q-text">"${item.question}"</div>
+            <div class="history-time-meta">🕒 ${item.timestamp || 'Recorded'} ${item.voice_speed ? `• 🗣️ ${item.voice_speed}` : ''}</div>
+          `;
+          list.appendChild(card);
+        });
+      }
+
+      document.getElementById('historyOverlay').classList.remove('hidden');
+    }
+
+    function closeHistoryDrawer(e) {
+      document.getElementById('historyOverlay').classList.add('hidden');
+    }
+
+    function clearAllHistory() {
+      localStorage.removeItem(STORAGE_KEY);
+      updateHistoryBadge();
+      openHistoryDrawer();
+      showToast('History cleared.');
+    }
+
+    // Start hands-free listening on initial page load / user interaction
+    window.addEventListener('load', () => {
+      updateHistoryBadge();
+      initHandsFreeVoice();
+    });
+    // In case browser requires interaction before mic access
+    document.addEventListener('click', () => {
+      if (!isHandsFreeActive && !isQueryInFlight) {
+        initHandsFreeVoice();
+      }
+    }, { once: true });
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.innerText = msg;
+      toast.classList.remove('hidden');
+      setTimeout(() => toast.classList.add('hidden'), 2500);
+    }
+
+    function copyFullDossier() {
+      const q = document.getElementById('displayQuestion').innerText;
+      const r = document.getElementById('displaySpokenReply').innerText;
+      const t = document.getElementById('displayTextContent').innerText;
+      const s = document.getElementById('displaySummaryContent').innerText;
+      const full = `IARELS BRIEFING\n\nQuestion: ${q}\n\nSpoken Reply: ${r}\n\n[Box 1 - Text]:\n${t}\n\n[Box 2 - Summarization]:\n${s}`;
+      navigator.clipboard.writeText(full).then(() => {
+        showToast('Copied full dossier to clipboard!');
+      });
+    }
+  </script>
+</body>
+</html>
